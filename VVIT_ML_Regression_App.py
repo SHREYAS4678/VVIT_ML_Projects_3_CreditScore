@@ -14,30 +14,33 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 
 # ---------------------------
-# Title
+# TITLE
 # ---------------------------
+st.set_page_config(page_title="Credit Score ML Dashboard", layout="wide")
 st.title("🏦 Credit Score Prediction Dashboard")
 
 # ---------------------------
-# Load Dataset (FROM URL)
+# LOAD DATA (SAFE)
 # ---------------------------
 @st.cache_data
 def load_data():
     url = "https://raw.githubusercontent.com/pragyanaischool/VVIT_ML_Projects_3_CreditScore/refs/heads/main/CreditScoring.csv"
     df = pd.read_csv(url)
+
+    # 🔥 CLEAN COLUMN NAMES
+    df.columns = df.columns.str.strip()
+
+    # 🔥 FIX DTYPE ISSUES (CRITICAL)
+    df = df.infer_objects(copy=False)
+
     return df
 
 df = load_data()
 
 # ---------------------------
-# Basic Cleaning
+# SIDEBAR
 # ---------------------------
-df.columns = df.columns.str.strip()
-
-# ---------------------------
-# Sidebar Menu
-# ---------------------------
-menu = st.sidebar.selectbox("Menu", [
+menu = st.sidebar.radio("Navigation", [
     "EDA Dashboard",
     "Model Training",
     "Hyperparameter Tuning",
@@ -45,12 +48,12 @@ menu = st.sidebar.selectbox("Menu", [
 ])
 
 # ---------------------------
-# EDA
+# EDA DASHBOARD
 # ---------------------------
 if menu == "EDA Dashboard":
 
     st.subheader("📊 Dataset Preview")
-    st.write(df.head())
+    st.write(df.head())   # SAFE DISPLAY (no Arrow crash)
 
     st.subheader("📈 Data Types")
     st.write(df.dtypes)
@@ -58,16 +61,17 @@ if menu == "EDA Dashboard":
     st.subheader("📊 Missing Values")
     st.write(df.isnull().sum())
 
-    # Convert numeric columns
+    # Correlation Heatmap (only numeric)
     numeric_df = df.select_dtypes(include=np.number)
 
     if not numeric_df.empty:
-        fig, ax = plt.subplots()
-        sns.heatmap(numeric_df.corr(), annot=True, ax=ax)
+        st.subheader("📊 Correlation Heatmap")
+        fig, ax = plt.subplots(figsize=(10,6))
+        sns.heatmap(numeric_df.corr(), annot=True, cmap="coolwarm", ax=ax)
         st.pyplot(fig)
 
 # ---------------------------
-# Preprocessing Function
+# PREPROCESS FUNCTION
 # ---------------------------
 def preprocess(df):
 
@@ -85,11 +89,15 @@ def preprocess(df):
     for col in df.select_dtypes(include='object').columns:
         df[col] = le.fit_transform(df[col])
 
-    # Target column (auto detect last column)
+    # Target column (LAST COLUMN)
     target_col = df.columns[-1]
 
     X = df.drop(target_col, axis=1)
     y = df[target_col]
+
+    # 🔥 FORCE NUMERIC (IMPORTANT)
+    X = X.apply(pd.to_numeric, errors='coerce')
+    X = X.fillna(0)
 
     # Scaling
     scaler = StandardScaler()
@@ -104,7 +112,7 @@ X_train, X_test, y_train, y_test = train_test_split(
 )
 
 # ---------------------------
-# Model Training
+# MODEL TRAINING
 # ---------------------------
 if menu == "Model Training":
 
@@ -128,19 +136,23 @@ if menu == "Model Training":
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
 
-    st.write("Accuracy:", accuracy_score(y_test, y_pred))
+    st.subheader("📊 Results")
+
+    st.write("Accuracy:", round(accuracy_score(y_test, y_pred), 4))
 
     st.text("Classification Report")
     st.text(classification_report(y_test, y_pred))
 
     # Confusion Matrix
     cm = confusion_matrix(y_test, y_pred)
+
     fig, ax = plt.subplots()
-    sns.heatmap(cm, annot=True, fmt='d', ax=ax)
+    sns.heatmap(cm, annot=True, fmt='d', cmap="Blues", ax=ax)
+    ax.set_title("Confusion Matrix")
     st.pyplot(fig)
 
 # ---------------------------
-# Hyperparameter Tuning
+# HYPERPARAMETER TUNING
 # ---------------------------
 if menu == "Hyperparameter Tuning":
 
@@ -171,11 +183,11 @@ if menu == "Hyperparameter Tuning":
 
     grid.fit(X_train, y_train)
 
-    st.write("Best Params:", grid.best_params_)
-    st.write("Best Score:", grid.best_score_)
+    st.write("Best Parameters:", grid.best_params_)
+    st.write("Best Score:", round(grid.best_score_, 4))
 
 # ---------------------------
-# Prediction UI
+# PREDICTION UI
 # ---------------------------
 if menu == "Prediction":
 
@@ -183,16 +195,18 @@ if menu == "Prediction":
 
     user_inputs = []
 
+    # Dynamic inputs
     for col in feature_names:
         val = st.number_input(f"{col}", value=0.0)
         user_inputs.append(val)
 
-    # Train model once
     model = RandomForestClassifier()
     model.fit(X_train, y_train)
 
     if st.button("Predict"):
+
         data = scaler.transform([user_inputs])
         pred = model.predict(data)
 
         st.success(f"Predicted Credit Score: {pred[0]}")
+        
