@@ -8,8 +8,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 
 # 1. Page Config
-st.set_page_config(page_title=" PragyanAI - Customer Segmentation Tool", layout="wide")
-st.title(" PragyanAI Customer Segmentation Pro")
+st.set_page_config(page_title="  Customer Segmentation Tool", layout="wide")
+st.title("  Customer Segmentation ")
 st.markdown("Upload a dataset or use our sample to cluster customers and test new inputs.")
 
 # 2. Data Loading
